@@ -24,12 +24,12 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Build Debian image
-        run: docker build --tag mujin-map-editor:verify .
+        run: docker build --tag agv-map-editor:verify .
       - name: Verify startup, save, and persistent volume
         shell: bash
         run: |
           set -euo pipefail
-          container="mujin-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          container="agv-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           volume="${container}-data"
           cleanup() {
             docker logs "$container" || true
@@ -39,7 +39,7 @@ jobs:
           trap cleanup EXIT
           docker volume create "$volume"
           start_container() {
-            docker run -d --name "$container" -v "$volume:/data" mujin-map-editor:verify
+            docker run -d --name "$container" -v "$volume:/data" agv-map-editor:verify
             for attempt in {1..30}; do
               if [ "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy ]; then
                 return 0

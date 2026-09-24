@@ -1,4 +1,4 @@
-# Mujin AGV Map Editor
+# AGV Map Editor
 
 A full-stack engineering workbench for viewing, validating, and editing an AGV
 waypoint map. The primary user is a commissioning or integration engineer configuring
@@ -36,8 +36,8 @@ separate stage, runs as an unprivileged user, exposes a health check, and stores
 editable map under `/data`.
 
 ```bash
-docker build -t mujin-map-editor:local .
-docker run --rm -p 3000:3000 -v mujin-map-data:/data mujin-map-editor:local
+docker build -t agv-map-editor:local .
+docker run --rm -p 3000:3000 -v agv-map-data:/data agv-map-editor:local
 ```
 
 Then open `http://localhost:3000`. The named volume preserves saved edits across

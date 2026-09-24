@@ -20,5 +20,5 @@ if (existsSync(clientPath)) {
 }
 
 app.listen(port, () => {
-  console.log(`Mujin AGV Map Editor listening on http://localhost:${port}`);
+  console.log(`AGV Map Editor listening on http://localhost:${port}`);
 });

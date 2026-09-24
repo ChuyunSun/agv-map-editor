@@ -202,7 +202,8 @@ verified application from Docker Hub.
 
 ### Delivery preparation
 
-- Private repository created: `ChuyunSun/mujin-map-editor` (author's updated preference).
+- Repository renamed to `ChuyunSun/agv-map-editor`; author now requests public source
+  and public `sunchuyun/agv-map-editor` image. GitHub re-authentication is pending.
 - Added CI configuration for tests, build, Docker health/static serving, save, and
   persistence across container replacement. Execution remains pending.
 - Source uploaded and private visibility verified. GitHub-hosted Docker verification

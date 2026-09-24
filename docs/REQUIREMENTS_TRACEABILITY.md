@@ -5,7 +5,7 @@ make review fast and to keep bonus work from obscuring the required behavior.
 
 | Assessment requirement | Implementation | Verification |
 | --- | --- | --- |
-| Start from `debian:bullseye` | Multi-stage `Dockerfile`; every stage derives from the Debian base; signed fixed-date APT snapshots | [CI run 35966864017](https://github.com/ChuyunSun/mujin-map-editor/actions/runs/35966864017): build, health, HTTP save, container replacement persistence passed |
+| Start from `debian:bullseye` | Multi-stage `Dockerfile`; every stage derives from the Debian base; signed fixed-date APT snapshots | [CI run 35966864017](https://github.com/ChuyunSun/agv-map-editor/actions/runs/35966864017): build, health, HTTP save, container replacement persistence passed |
 | React and TypeScript UI | `client/src` workbench and SVG map canvas | strict client typecheck, component tests, browser smoke test |
 | Integer X/Y millimeter coordinates and integer QR code | shared Zod schema plus integer inspector fields | schema and inspector tests |
 | Optional directions, charger/chute direction, and name | node inspector controls for every optional property | component tests and API validation |

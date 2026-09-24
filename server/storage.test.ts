@@ -17,7 +17,7 @@ afterEach(async () => {
 
 describe('JSON file map storage', () => {
   it('writes and reads a validated map', async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), 'mujin-map-test-'));
+    const directory = await mkdtemp(path.join(tmpdir(), 'agv-map-test-'));
     temporaryDirectories.push(directory);
     const filePath = path.join(directory, 'nested', 'map.json');
     const store = new JsonFileMapStore(filePath);
@@ -35,7 +35,7 @@ describe('JSON file map storage', () => {
   });
 
   it('rejects a malformed map already present on disk', async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), 'mujin-map-test-'));
+    const directory = await mkdtemp(path.join(tmpdir(), 'agv-map-test-'));
     temporaryDirectories.push(directory);
     const filePath = path.join(directory, 'map.json');
     const store = new JsonFileMapStore(filePath);

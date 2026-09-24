@@ -5,21 +5,21 @@
 The remaining account setup, image publication and reviewer handoff steps are in
 [the release guide](RELEASE_GUIDE.md). No example image name is a published artifact.
 
-- Repository name: `mujin-map-editor`.
-- Repository visibility: private, as requested by the author before creation.
-- Repository: https://github.com/ChuyunSun/mujin-map-editor
+- Repository name: `agv-map-editor`.
+- Requested visibility: public (updated author instruction); GitHub re-authentication is pending.
+- Repository: https://github.com/ChuyunSun/agv-map-editor
 - Do not change visibility without a new explicit instruction from the author.
 - Do not include recruiting correspondence, the original assessment PDF, credentials,
   or unrelated workspace files. The implementation includes the supplied sample map.
 - Confirm the assessment's redistribution/visibility instructions before public upload.
-- Docker Hub repository and account: not yet configured.
+- Docker Hub target: `sunchuyun/agv-map-editor`, public as requested; publication pending.
 
 ## Verification status
 
 - [x] Local application tests and production build passed before delivery preparation.
 - [x] GitHub Actions workflow prepared for tests, build, Debian Docker startup,
   HTTP save, and persistence across container replacement.
-- [x] Workflow executed successfully on GitHub: [run 35966864017](https://github.com/ChuyunSun/mujin-map-editor/actions/runs/35966864017), commit `16723b0`.
+- [x] Workflow executed successfully on GitHub: [run 35966864017](https://github.com/ChuyunSun/agv-map-editor/actions/runs/35966864017), commit `16723b0`.
 - [x] Docker image built and runtime verified on GitHub's Linux host, including
   health, HTML serving, initial 58 nodes, HTTP save, and persistence across container replacement.
 - [x] Source pushed to GitHub and private visibility verified.
@@ -32,8 +32,8 @@ The remaining account setup, image publication and reviewer handoff steps are in
 At preparation time, neither `docker` nor `gh` was available on PATH or in its
 standard Program Files location. The in-app browser was signed out of GitHub.
 The author subsequently signed in and the private GitHub repository was created.
-Source upload and Docker verification are complete. The author does not yet have
-a Docker Hub account, so image publication remains pending. Passwords and
+Source upload and Docker verification are complete. The author supplied Docker ID
+`sunchuyun`; Docker Hub authentication and publication remain pending. Passwords and
 tokens should not be placed in chat or source files.
 
 The verification workflow never publishes an image and needs no Docker Hub secret.
