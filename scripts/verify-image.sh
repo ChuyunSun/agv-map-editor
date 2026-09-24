@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+: "${IMAGE:?Set IMAGE to the image reference to verify}"
+set -euo pipefail
+container="agv-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+volume="${container}-data"
+cleanup() {
+  docker logs "$container" || true
+  docker rm -f "$container" || true
+  docker volume rm "$volume" || true
+}
+trap cleanup EXIT
+docker volume create "$volume"
+start_container() {
+  docker run -d --name "$container" -v "$volume:/data" "$IMAGE"
+  for attempt in {1..30}; do
+    if [ "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy ]; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+start_container
+docker exec "$container" node --input-type=module -e '
+  import assert from "node:assert/strict";
+  const base = "http://localhost:3000";
+  const page = await fetch(base);
+  assert.equal(page.status, 200);
+  assert.match(await page.text(), /<div id="root">/);
+  const response = await fetch(`${base}/api/map`);
+  assert.equal(response.status, 200);
+  const { document } = await response.json();
+  assert.equal(document.map.nodes.length, 58);
+  document.map.nodes[0].name = "CI_PERSISTENCE_CHECK";
+  const saved = await fetch(`${base}/api/map`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(document),
+  });
+  assert.equal(saved.status, 200);
+'
+docker rm -f "$container"
+start_container
+docker exec "$container" node --input-type=module -e '
+  import assert from "node:assert/strict";
+  const response = await fetch("http://localhost:3000/api/map");
+  assert.equal(response.status, 200);
+  const { document } = await response.json();
+  assert.equal(document.map.nodes[0].name, "CI_PERSISTENCE_CHECK");
+'
