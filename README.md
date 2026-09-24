@@ -31,6 +31,25 @@ Open `http://localhost:3000`; Express serves both the REST API and compiled clie
 
 ## Docker
 
+Published image: [sunchuyun/agv-map-editor](https://hub.docker.com/r/sunchuyun/agv-map-editor).
+Public; no Docker Hub login required. Verified platform: **linux/amd64**.
+
+```bash
+docker run --rm --platform linux/amd64 -p 127.0.0.1:3000:3000 -v agv-map-data:/data sunchuyun/agv-map-editor:sha-19b8186cdf7d9e9986af64392a9e8ad38135d86f
+```
+
+Open `http://localhost:3000`. Stop with Ctrl+C; reuse the same volume to retain edits.
+Use another host port if 3000 is occupied (for example `127.0.0.1:3001:3000`).
+On ARM machines this image requires amd64 emulation; native ARM runtime is not verified.
+
+Image digest: `sha256:f6caa7745ba6c017a602104fff796c0647c602c33531c84b06890c472a8125e7`.
+Source commit: `19b8186cdf7d9e9986af64392a9e8ad38135d86f`.
+[Release verification](https://github.com/ChuyunSun/agv-map-editor/actions/runs/36027252482)
+passed tests, build, anonymous registry pull on a fresh runner, startup, HTTP save,
+and persistence across container replacement. No `latest` tag is published.
+
+### Build from source
+
 The image starts from `debian:bullseye`, builds the TypeScript application in a
 separate stage, runs as an unprivileged user, exposes a health check, and stores the
 editable map under `/data`.
@@ -115,8 +134,9 @@ accepted. Writes use a same-directory temporary file followed by rename.
 
 The GitHub Actions workflow in `.github/workflows/verify.yml` runs tests, builds the
 application and Debian image, then verifies HTTP save and data persistence across
-container replacement. It does not publish images. A configured workflow is not a
-successful run; see the [delivery checklist](docs/DELIVERY_CHECKLIST.md) for pending
+container replacement. Push and pull-request runs never publish. A manual run on `main` with the explicit
+`publish` input uses the repository's `DOCKERHUB_TOKEN` secret to push a commit-tagged
+image, followed by anonymous verification on a fresh runner. See the [delivery checklist](docs/DELIVERY_CHECKLIST.md) for pending
 release verification and publication steps.
 
 ```bash

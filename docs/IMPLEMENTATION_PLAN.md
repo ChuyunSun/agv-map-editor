@@ -173,7 +173,7 @@ Add the optional spatial interactions only after the complete core workflow is s
 - dragging recomputes routes and diagnostics;
 - reset/fit always returns the map to a usable view.
 
-## 8. Docker and delivery `[~]`
+## 8. Docker and delivery `[x]`
 
 ### Why
 
@@ -203,13 +203,13 @@ verified application from Docker Hub.
 ### Delivery preparation
 
 - Repository renamed to `ChuyunSun/agv-map-editor`; author now requests public source
-  and public `sunchuyun/agv-map-editor` image. GitHub re-authentication is pending.
+  and public `sunchuyun/agv-map-editor` image. Both repositories are now public.
 - Added CI configuration for tests, build, Docker health/static serving, save, and
   persistence across container replacement. Execution remains pending.
 - Source uploaded and private visibility verified. GitHub-hosted Docker verification
   passed in run `35966864017`: build, startup, save, and container replacement persistence.
 - Bullseye live-package 404s resolved with signed official snapshots dated 2026-08-31;
-  EOL limitation documented in README. Docker Hub account/publication remains pending.
+  EOL limitation documented in README. Docker Hub publication and fresh-runner anonymous verification passed in run `36027252482`.
 
 ### UI refinement after review
 
@@ -237,4 +237,4 @@ verified application from Docker Hub.
 - [x] Production build succeeds.
 - [x] Docker clean-run test succeeds.
 - [x] Assumptions and tradeoffs are documented.
-- [ ] Repository access and Docker Hub URL are ready for submission.
+- [x] Repository access and Docker Hub URL are ready for submission.
