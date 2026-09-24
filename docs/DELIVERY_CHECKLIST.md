@@ -16,8 +16,9 @@
 - [x] Local application tests and production build passed before delivery preparation.
 - [x] GitHub Actions workflow prepared for tests, build, Debian Docker startup,
   HTTP save, and persistence across container replacement.
-- [ ] Workflow executed successfully on GitHub (configuration alone is not evidence).
-- [ ] Docker image built and runtime verified on a Docker-enabled host.
+- [x] Workflow executed successfully on GitHub: [run 35966864017](https://github.com/ChuyunSun/mujin-map-editor/actions/runs/35966864017), commit `16723b0`.
+- [x] Docker image built and runtime verified on GitHub's Linux host, including
+  health, HTML serving, initial 58 nodes, HTTP save, and persistence across container replacement.
 - [x] Source pushed to GitHub and private visibility verified.
 - [ ] Verified image pushed to Docker Hub with a versioned tag.
 - [ ] README updated with the actual image name and pull/run command.
@@ -28,7 +29,8 @@
 At preparation time, neither `docker` nor `gh` was available on PATH or in its
 standard Program Files location. The in-app browser was signed out of GitHub.
 The author subsequently signed in and the private GitHub repository was created.
-Source upload is complete; Docker verification and image delivery are tracked above. Passwords and
+Source upload and Docker verification are complete. The author does not yet have
+a Docker Hub account, so image publication remains pending. Passwords and
 tokens should not be placed in chat or source files.
 
 The verification workflow never publishes an image and needs no Docker Hub secret.

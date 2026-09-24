@@ -206,7 +206,9 @@ verified application from Docker Hub.
 - Added CI configuration for tests, build, Docker health/static serving, save, and
   persistence across container replacement. Execution remains pending.
 - Source uploaded and private visibility verified. GitHub-hosted Docker verification
-  has started; see `DELIVERY_CHECKLIST.md`. No image has been published yet.
+  passed in run `35966864017`: build, startup, save, and container replacement persistence.
+- Bullseye live-package 404s resolved with signed official snapshots dated 2026-08-31;
+  EOL limitation documented in README. Docker Hub account/publication remains pending.
 
 ### UI refinement after review
 
@@ -232,6 +234,6 @@ verified application from Docker Hub.
 - [x] Frontend and backend automated tests pass.
 - [x] Strict type checking passes.
 - [x] Production build succeeds.
-- [ ] Docker clean-run test succeeds.
+- [x] Docker clean-run test succeeds.
 - [x] Assumptions and tradeoffs are documented.
 - [ ] Repository access and Docker Hub URL are ready for submission.
