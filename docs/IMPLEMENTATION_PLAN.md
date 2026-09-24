@@ -200,6 +200,33 @@ verified application from Docker Hub.
 
 ## Final review checklist
 
+### Delivery preparation
+
+- Private repository created: `ChuyunSun/mujin-map-editor` (author's updated preference).
+- Added CI configuration for tests, build, Docker health/static serving, save, and
+  persistence across container replacement. Execution remains pending.
+- GitHub browser login is complete. Source upload and Docker-enabled verification
+  remain pending; see `DELIVERY_CHECKLIST.md`. No image has been published yet.
+
+### UI refinement after review
+
+- Add now opens a draft configuration dialog after placement: measured coordinates,
+  manually supplied QR, optional attributes, directed connection preview, and explicit
+  confirmation. Cancel changes nothing; confirmation is one undoable edit.
+- Incoming/outgoing gaps produce non-blocking warnings in both preview and persisted
+  map diagnostics. New nearest-neighbor routing changes are surfaced before creation.
+- Automated coverage includes missing/fractional QR, duplicate coordinates, route
+  preview, station attributes, cancellation, undo, and saving a disconnected point.
+
+- Node markers and labels now use screen-space sizes so zoom separates nearby nodes.
+- Overview labels avoid collisions; selected nodes retain their label and all nodes expose hover details.
+- Added canvas zoom controls, selection halos, and an explicit markers-not-to-scale note.
+- Narrow windows stack the map and panels instead of clipping the desktop workbench.
+- Verified the narrow-window layout in the browser and rebuilt successfully.
+- Review regression tests now assert correct behavior: preserve edits made during an in-flight save, serialize saves, block invalid field drafts (including keyboard saves), reset drafts on node selection, and retain diagnostic links after a rejected save.
+- Drag and pan calculations now account for SVG letterboxing, zoom, and rotation. Pointer cancellation discards the drag instead of committing it.
+- Malformed JSON returns 400 and oversized requests return 413 without changing map data.
+
 - [x] All explicit assessment requirements are mapped to a deliverable.
 - [x] Core requirements work without bonus features.
 - [x] Frontend and backend automated tests pass.

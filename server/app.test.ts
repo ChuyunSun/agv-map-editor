@@ -27,6 +27,27 @@ function createMemoryStore(initial: AgvMap): MapStore & { value: AgvMap } {
 }
 
 describe('map API', () => {
+  it('persists a disconnected point with non-blocking connection warnings', async () => {
+    const store = createMemoryStore(validMap);
+    const document = { map: { ...validMap.map, nodes: [...validMap.map.nodes, { x: 9000, y: 9000, code: 3 }] } };
+    const response = await request(createApp(store)).put('/api/map').send(document).expect(200);
+    expect(store.value).toEqual(document);
+    expect(response.body.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'no-incoming-route', severity: 'warning', nodeIndexes: [2] }),
+      expect.objectContaining({ code: 'no-outgoing-route', severity: 'warning', nodeIndexes: [2] }),
+    ]));
+  });
+  it('returns 400 for invalid JSON without writing data', async () => {
+    const store = createMemoryStore(validMap);
+    await request(createApp(store)).put('/api/map').set('Content-Type', 'application/json').send('{broken').expect(400);
+    expect(store.value).toEqual(validMap);
+  });
+
+  it('returns 413 for oversized JSON without writing data', async () => {
+    const store = createMemoryStore(validMap);
+    await request(createApp(store)).put('/api/map').send({ padding: 'x'.repeat(1024 * 1024) }).expect(413);
+    expect(store.value).toEqual(validMap);
+  });
   it('reports health', async () => {
     const app = createApp(createMemoryStore(validMap));
     await request(app).get('/api/health').expect(200, { status: 'ok' });

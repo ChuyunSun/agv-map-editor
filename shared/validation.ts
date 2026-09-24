@@ -1,4 +1,4 @@
-import { findNeighbor } from './connections.js';
+import { findNeighbor, inferRoutes } from './connections.js';
 import type { AgvMap } from './map-schema.js';
 
 export type IssueSeverity = 'error' | 'warning';
@@ -89,5 +89,12 @@ export function validateMapSemantics(document: AgvMap): MapIssue[] {
     }
   });
 
+  const routes = inferRoutes(document);
+  const incoming = new Set(routes.map((route) => route.toIndex));
+  const outgoing = new Set(routes.map((route) => route.fromIndex));
+  nodes.forEach((node, index) => {
+    if (!incoming.has(index)) issues.push({ severity: 'warning', code: 'no-incoming-route', message: `${node.name ?? node.code} has no incoming route from another node.`, nodeIndexes: [index] });
+    if (!outgoing.has(index)) issues.push({ severity: 'warning', code: 'no-outgoing-route', message: `${node.name ?? node.code} has no usable outgoing route.`, nodeIndexes: [index] });
+  });
   return issues;
 }

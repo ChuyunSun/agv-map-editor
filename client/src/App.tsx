@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { FieldValidationContext } from './field-validation';
 import { inferRoutes } from '../../shared/connections';
 import type { AgvMap, MapNode } from '../../shared/map-schema';
 import { validateMapSemantics } from '../../shared/validation';
@@ -6,6 +7,7 @@ import { loadMap, saveMap } from './api';
 import { historyReducer, initialHistory } from './history';
 import { MapCanvas } from './MapCanvas';
 import { IntegerField, NodeInspector } from './NodeInspector';
+import { NewNodeDialog } from './NewNodeDialog';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -21,8 +23,23 @@ export function App() {
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasRotation, setCanvasRotation] = useState(0);
   const [fitToken, setFitToken] = useState(0);
+  const [isAddingNode, setIsAddingNode] = useState(false);
+  const [pendingPosition, setPendingPosition] = useState<{ x: number; y: number } | null>(null);
   const document = history.present;
-  const dirty = document !== null && savedDocument !== null && JSON.stringify(document) !== JSON.stringify(savedDocument);
+  const latestDocument = useRef(document);
+  latestDocument.current = document;
+  const saveInFlight = useRef(false);
+  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
+  const reportValidity = useCallback((id: string, invalid: boolean) => {
+    setInvalidFields((previous) => {
+      if (previous.has(id) === invalid) return previous;
+      const next = new Set(previous);
+      if (invalid) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  const dirty = invalidFields.size > 0 || (document !== null && savedDocument !== null && JSON.stringify(document) !== JSON.stringify(savedDocument));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -40,11 +57,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !pendingPosition) return;
     const warnBeforeLeaving = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', warnBeforeLeaving);
     return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
-  }, [dirty]);
+  }, [dirty, pendingPosition]);
 
   const filteredNodeIndexes = useMemo(() => {
     if (!document) return [];
@@ -58,31 +75,41 @@ export function App() {
   }, [document, query]);
 
   const persistMap = async () => {
-    if (!document) return;
+    if (!document || saveInFlight.current) return;
+    if (invalidFields.size > 0) {
+      setSaveState('error');
+      setSaveMessage('Correct the invalid fields before saving.');
+      return;
+    }
     const blockingIssues = validateMapSemantics(document).filter((issue) => issue.severity === 'error');
     if (blockingIssues.length > 0) {
       setSaveState('error');
       setSaveMessage(`Resolve ${blockingIssues.length} blocking error${blockingIssues.length === 1 ? '' : 's'} before saving.`);
       return;
     }
+    saveInFlight.current = true;
     setSaveState('saving');
     setSaveMessage('Saving validated map…');
     try {
       const response = await saveMap(document);
-      dispatchHistory({ type: 'replace', document: response.document });
+      const unchanged = latestDocument.current === document;
+      if (unchanged) dispatchHistory({ type: 'replace', document: response.document });
       setSavedDocument(response.document);
       setSaveState('saved');
-      setSaveMessage('Map saved to the server.');
+      setSaveMessage(unchanged ? 'Map saved to the server.' : 'Earlier changes saved. Newer edits are still unsaved.');
     } catch (requestError) {
       setSaveState('error');
       setSaveMessage(requestError instanceof Error ? requestError.message : 'Map save failed.');
+    } finally {
+      saveInFlight.current = false;
     }
   };
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const editingText = target?.matches('input, select, textarea');
+      if (pendingPosition) return;
+      const target = event.target;
+      const editingText = target instanceof Element && target.matches('input, select, textarea, [contenteditable="true"]');
       const command = event.ctrlKey || event.metaKey;
 
       if (command && event.key.toLocaleLowerCase() === 's') {
@@ -99,6 +126,7 @@ export function App() {
         dispatchHistory({ type: 'change', document: { map: { ...document.map, nodes: document.map.nodes.filter((_node, index) => index !== selectedIndex) } } });
         setSelectedIndex(null);
       } else if (event.key === 'Escape') {
+        setIsAddingNode(false);
         setSelectedIndex(null);
       }
     };
@@ -132,7 +160,7 @@ export function App() {
 
   const applyDocument = (nextDocument: AgvMap) => {
     dispatchHistory({ type: 'change', document: nextDocument });
-    setSaveState('idle');
+    if (!saveInFlight.current) setSaveState('idle');
     setSaveMessage('');
   };
 
@@ -142,16 +170,17 @@ export function App() {
     applyDocument({ map: { ...document.map, nodes: nextNodes } });
   };
 
-  const addNode = () => {
-    const step = document.map.maxNeighborDistance;
-    let x = Math.max(0, ...nodes.map((node) => node.x)) + step;
-    const y = selectedNode?.y ?? Math.min(0, ...nodes.map((node) => node.y));
-    while (nodes.some((node) => node.x === x && node.y === y)) x += step;
-    const code = Math.max(0, ...nodes.map((node) => node.code)) + 10;
-    const nextNodes = [...nodes, { x, y, code }];
+  const addNode = (x: number, y: number) => {
+    setPendingPosition({ x, y });
+    setIsAddingNode(false);
+  };
+
+  const confirmNode = (node: MapNode) => {
+    const nextNodes = [...nodes, node];
     applyDocument({ map: { ...document.map, nodes: nextNodes } });
     setSelectedIndex(nextNodes.length - 1);
     setQuery('');
+    setPendingPosition(null);
   };
 
   const deleteSelectedNode = () => {
@@ -161,11 +190,12 @@ export function App() {
   };
 
   return (
+    <FieldValidationContext.Provider value={reportValidity}>
     <main className="workbench">
       <header className="toolbar">
         <div className="brand"><span className="brand__mark">M</span><div><strong>AGV Map Editor</strong><span>Commissioning workbench</span></div></div>
         <div className="toolbar__actions" aria-label="Map actions">
-          <button type="button" onClick={addNode}>Add node</button>
+          <button type="button" aria-pressed={isAddingNode} onClick={() => setIsAddingNode((value) => !value)} title="Choose a position on the map">Add node</button>
           <button type="button" disabled={selectedIndex === null} onClick={deleteSelectedNode}>Delete</button>
           <span className="toolbar__separator" />
           <button type="button" disabled={history.past.length === 0} onClick={() => dispatchHistory({ type: 'undo' })} title={history.past.length === 0 ? 'Nothing to undo' : 'Undo last map change'}>Undo</button>
@@ -206,6 +236,8 @@ export function App() {
           rotation={canvasRotation}
           fitToken={fitToken}
           onScaleChange={setCanvasScale}
+          onAdd={isAddingNode ? addNode : undefined}
+          onCancelAdd={() => setIsAddingNode(false)}
           onMove={(index, x, y) => updateNode(index, { ...nodes[index]!, x, y })}
         />
         <div className="legend" aria-label="Map legend">
@@ -220,7 +252,7 @@ export function App() {
             <h3>Connection rule</h3>
             <IntegerField label="Maximum neighbor distance (mm)" value={document.map.maxNeighborDistance} minimum={1} onValidChange={(maxNeighborDistance) => applyDocument({ map: { ...document.map, maxNeighborDistance } })} />
           </section>
-          {selectedNode ? <NodeInspector node={selectedNode} onChange={(node) => updateNode(selectedIndex!, node)} /> : (
+          {selectedNode ? <NodeInspector key={selectedIndex} node={selectedNode} onChange={(node) => updateNode(selectedIndex!, node)} /> : (
             <div className="empty-inspector"><span className="empty-inspector__icon">◎</span><p>Select a waypoint on the map or in the explorer to edit its configuration.</p></div>
           )}
         </div>
@@ -238,7 +270,7 @@ export function App() {
         <div className="issue-list">
           {saveMessage && <p className={saveState === 'error' ? 'message--error' : ''}>{saveMessage}</p>}
           {!saveMessage && filteredIssues.length === 0 && <p>No {issueFilter === 'all' ? '' : `${issueFilter} `}issues.</p>}
-          {!saveMessage && filteredIssues.map((issue, index) => (
+          {filteredIssues.map((issue, index) => (
             <button
               type="button"
               key={`${issue.code}-${issue.nodeIndexes.join('-')}-${index}`}
@@ -256,5 +288,7 @@ export function App() {
         <span className={`status ${dirty ? 'status--dirty' : 'status--saved'}`}>● {dirty ? 'Unsaved' : 'Saved'}</span><span>{nodes.length} nodes</span><span>{routes.length} routes</span><span>Zoom {Math.round(canvasScale * 100)}%</span><span>Rotation {canvasRotation}°</span><span>Max neighbor {document.map.maxNeighborDistance.toLocaleString()} mm</span><span className="statusbar__spacer" /><span>North +X · West +Y</span>
       </footer>
     </main>
+    {pendingPosition && <NewNodeDialog document={document} position={pendingPosition} onCreate={confirmNode} onCancel={() => setPendingPosition(null)} />}
+    </FieldValidationContext.Provider>
   );
 }

@@ -56,6 +56,14 @@ export function createApp(store: MapStore) {
   });
 
   const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
+    if (error?.type === 'entity.parse.failed') {
+      response.status(400).json({ error: 'Request body must be valid JSON.' });
+      return;
+    }
+    if (error?.type === 'entity.too.large') {
+      response.status(413).json({ error: 'Map exceeds the 1 MB request limit.' });
+      return;
+    }
     console.error(error);
     response.status(500).json({
       error: 'The map could not be read or saved.',

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent } from 'react';
 import { inferRoutes } from '../../shared/connections';
+import { screenDeltaToMap } from './canvas-coordinates';
 import type { AgvMap, MapNode } from '../../shared/map-schema';
 
 interface Point {
@@ -53,6 +54,8 @@ interface MapCanvasProps {
   rotation?: number;
   fitToken?: number;
   onScaleChange?: (scale: number) => void;
+  onAdd?: ((x: number, y: number) => void) | undefined;
+  onCancelAdd?: () => void;
 }
 
 interface DragState {
@@ -62,25 +65,58 @@ interface DragState {
   node: MapNode;
 }
 
-export function MapCanvas({ document, selectedIndex, onSelect, onMove, scale = 1, rotation = 0, fitToken = 0, onScaleChange }: MapCanvasProps) {
+export function MapCanvas({ document, selectedIndex, onSelect, onMove, scale = 1, rotation = 0, fitToken = 0, onScaleChange, onAdd, onCancelAdd }: MapCanvasProps) {
   const routes = useMemo(() => inferRoutes(document), [document]);
-  const geometry = useMemo(() => createGeometry(document), [document]);
+  // Document edits must not move the camera. Reframe only on explicit Fit map.
+  const frame = useRef<{ token: number; geometry: CanvasGeometry } | null>(null);
+  if (!frame.current || frame.current.token !== fitToken) {
+    frame.current = { token: fitToken, geometry: createGeometry(document) };
+  }
+  const geometry = frame.current.geometry;
+  const worldRef = useRef<SVGGElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [viewport, setViewport] = useState({ width: 800, height: 500 });
+  useEffect(() => {
+    const element = svgRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const pixelsPerUnit = Math.max(0.0001, Math.min(viewport.width / geometry.width, viewport.height / geometry.height));
+  const symbolScale = 1 / (pixelsPerUnit * scale);
   const { nodes } = document.map;
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [preview, setPreview] = useState<{ index: number; node: MapNode } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const panRef = useRef<{ clientX: number; clientY: number; start: Point } | null>(null);
   const center = { x: geometry.width / 2, y: geometry.height / 2 };
+  // Keep overview labels legible; zooming reveals labels as their anchors separate.
+  const labelBoxes: { x: number; y: number; halfWidth: number }[] = [];
+  const visibleLabels = new Set<number>();
+  const labelOrder = nodes.map((_node, index) => index).sort((a, b) => Number(b === selectedIndex) - Number(a === selectedIndex));
+  for (const index of labelOrder) {
+    const node = nodes[index]!;
+    if (!node.name && index !== selectedIndex) continue;
+    const point = geometry.pointFor(node);
+    const angle = rotation * Math.PI / 180;
+    const x = (point.x * Math.cos(angle) - point.y * Math.sin(angle)) / symbolScale;
+    const y = (point.x * Math.sin(angle) + point.y * Math.cos(angle)) / symbolScale;
+    const halfWidth = (node.name ?? `QR ${node.code}`).length * 3.2 + 5;
+    if (labelBoxes.some((box) => Math.abs(box.x - x) < box.halfWidth + halfWidth && Math.abs(box.y - y) < 16)) continue;
+    labelBoxes.push({ x, y, halfWidth });
+    visibleLabels.add(index);
+  }
 
   useEffect(() => setPan({ x: 0, y: 0 }), [fitToken]);
 
   const nodeFor = (node: MapNode, index: number) => preview?.index === index ? preview.node : node;
   const svgVector = (event: ReactPointerEvent<SVGSVGElement>, startX: number, startY: number) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    const dx = (event.clientX - startX) * geometry.width / rect.width / scale;
-    const dy = (event.clientY - startY) * geometry.height / rect.height / scale;
-    const angle = -rotation * Math.PI / 180;
-    return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
+    return screenDeltaToMap(event.clientX - startX, event.clientY - startY,
+      geometry.width, geometry.height, rect.width, rect.height, scale, rotation);
   };
 
   const handlePointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -90,15 +126,23 @@ export function MapCanvas({ document, selectedIndex, onSelect, onMove, scale = 1
       setPreview({ index: drag.index, node: { ...drag.node, x: Math.round(drag.node.x - delta.y), y: Math.round(drag.node.y - delta.x) } });
     } else if (panRef.current) {
       const rect = event.currentTarget.getBoundingClientRect();
+      const delta = screenDeltaToMap(event.clientX - panRef.current.clientX, event.clientY - panRef.current.clientY,
+        geometry.width, geometry.height, rect.width, rect.height);
       setPan({
-        x: panRef.current.start.x + (event.clientX - panRef.current.clientX) * geometry.width / rect.width,
-        y: panRef.current.start.y + (event.clientY - panRef.current.clientY) * geometry.height / rect.height,
+        x: panRef.current.start.x + delta.x,
+        y: panRef.current.start.y + delta.y,
       });
     }
   };
 
   const finishPointerAction = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (dragRef.current && preview) onMove?.(dragRef.current.index, preview.node.x, preview.node.y);
+    if (event.type !== 'pointercancel' && dragRef.current) {
+      const drag = dragRef.current;
+      const delta = svgVector(event, drag.clientX, drag.clientY);
+      const x = Math.round(drag.node.x - delta.y);
+      const y = Math.round(drag.node.y - delta.x);
+      if (x !== drag.node.x || y !== drag.node.y) onMove?.(drag.index, x, y);
+    }
     dragRef.current = null;
     panRef.current = null;
     setPreview(null);
@@ -112,13 +156,26 @@ export function MapCanvas({ document, selectedIndex, onSelect, onMove, scale = 1
   };
 
   return (
-    <div className="map-canvas-wrap">
+    <div className={`map-canvas-wrap${onAdd ? ' map-canvas-wrap--adding' : ''}`}>
       <svg
+        ref={svgRef}
         className="map-canvas"
         viewBox={geometry.viewBox}
         role="img"
         aria-label={`AGV map with ${nodes.length} nodes and ${routes.length} directed routes`}
         onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          if (onAdd) {
+            const matrix = worldRef.current?.getScreenCTM();
+            if (!matrix) return;
+            const cursor = event.currentTarget.createSVGPoint();
+            cursor.x = event.clientX;
+            cursor.y = event.clientY;
+            const point = cursor.matrixTransform(matrix.inverse());
+            const origin = geometry.pointFor({ x: 0, y: 0, code: 0 });
+            onAdd(Math.round(origin.y - point.y), Math.round(origin.x - point.x));
+            return;
+          }
           if ((event.target as Element).classList.contains('map-pan-surface')) {
             panRef.current = { clientX: event.clientX, clientY: event.clientY, start: pan };
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -148,7 +205,7 @@ export function MapCanvas({ document, selectedIndex, onSelect, onMove, scale = 1
 
         <rect className="map-pan-surface" width="100%" height="100%" fill="url(#grid)" />
 
-        <g transform={`translate(${center.x + pan.x} ${center.y + pan.y}) rotate(${rotation}) scale(${scale}) translate(${-center.x} ${-center.y})`}>
+        <g ref={worldRef} transform={`translate(${center.x + pan.x} ${center.y + pan.y}) rotate(${rotation}) scale(${scale}) translate(${-center.x} ${-center.y})`}>
         <g aria-label="Directed routes">
           {routes.map((route) => {
             const source = geometry.pointFor(nodes[route.fromIndex]!);
@@ -188,7 +245,7 @@ export function MapCanvas({ document, selectedIndex, onSelect, onMove, scale = 1
                 aria-pressed={selected}
                 onClick={() => onSelect(index)}
                 onPointerDown={(event) => {
-                  if (!onMove) return;
+                  if (!onMove || onAdd || event.button !== 0) return;
                   event.stopPropagation();
                   onSelect(index);
                   dragRef.current = { index, clientX: event.clientX, clientY: event.clientY, node };
@@ -201,27 +258,31 @@ export function MapCanvas({ document, selectedIndex, onSelect, onMove, scale = 1
                   }
                 }}
               >
-                <circle r={geometry.nodeRadius} className="node__target" />
-                <circle r={geometry.nodeRadius * 0.36} className="node__core" />
+                <title>{`${node.name ?? 'Waypoint'} · QR ${node.code}\nX ${node.x} mm · Y ${node.y} mm\n${node.directions?.join(', ') || 'No outgoing directions'}`}</title>
+                <g transform={`rotate(${-rotation}) scale(${symbolScale})`}>
+                <circle r={selected ? 8 : 3.5} className="node__halo" />
+                <circle r={node.charger || node.chute ? 5 : 3} className="node__target" />
+                <circle r={1} className="node__core" />
                 {node.charger && (
-                  <text y={geometry.nodeRadius * 0.19} className="node__symbol">
+                  <text y={3} className="node__symbol">
                     ⚡
                   </text>
                 )}
                 {node.chute && (
-                  <text y={geometry.nodeRadius * 0.2} className="node__symbol">
+                  <text y={3} className="node__symbol">
                     ↓
                   </text>
                 )}
-                {node.name && (
+                {visibleLabels.has(index) && (
                   <text
-                    y={-geometry.nodeRadius * 1.45}
+                    y={-10}
                     className="node__label"
-                    style={{ fontSize: geometry.labelSize }}
+                    style={{ fontSize: 10 }}
                   >
-                    {node.name}
+                    {node.name ?? `QR ${node.code}`}
                   </text>
                 )}
+                </g>
               </g>
             );
           })}
@@ -229,10 +290,17 @@ export function MapCanvas({ document, selectedIndex, onSelect, onMove, scale = 1
         </g>
       </svg>
 
-      <div className="compass" aria-label="Map coordinate orientation">
+      <div className="compass" aria-label="Map coordinate orientation" style={{ transform: `rotate(${rotation}deg)` }}>
         <span className="compass__north">N · +X</span>
         <span className="compass__west">W · +Y</span>
         <span className="compass__origin">mm</span>
+      </div>
+      <div className="canvas-caption"><strong>Warehouse map</strong><span>Coordinates in mm · markers not to scale</span></div>
+      {onAdd && <div className="placement-hint" role="status">Click the map to place a node <button type="button" onClick={onCancelAdd}>Cancel</button></div>}
+      <div className="canvas-controls" aria-label="Canvas zoom controls">
+        <button type="button" aria-label="Zoom out" disabled={!onScaleChange || scale <= 0.45} onClick={() => onScaleChange?.(Math.max(0.45, scale / 1.25))}>−</button>
+        <span>{Math.round(scale * 100)}%</span>
+        <button type="button" aria-label="Zoom in on canvas" disabled={!onScaleChange || scale >= 4} onClick={() => onScaleChange?.(Math.min(4, scale * 1.25))}>+</button>
       </div>
     </div>
   );

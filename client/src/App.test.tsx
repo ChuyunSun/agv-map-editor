@@ -15,7 +15,11 @@ const document: AgvMap = {
   },
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  Reflect.deleteProperty(SVGElement.prototype, 'getScreenCTM');
+  Reflect.deleteProperty(SVGElement.prototype, 'createSVGPoint');
+});
 
 describe('App workbench', () => {
   it('loads, searches, selects, and inspects a node', async () => {
@@ -70,11 +74,22 @@ describe('App workbench', () => {
   });
 
   it('adds and deletes a node without persisting automatically', async () => {
+    vi.stubGlobal('PointerEvent', MouseEvent);
+    Object.defineProperty(SVGElement.prototype, 'getScreenCTM', { configurable: true, value: () => ({ inverse: () => ({}) }) });
+    Object.defineProperty(SVGElement.prototype, 'createSVGPoint', { configurable: true, value: () => ({ x: 0, y: 0, matrixTransform: () => ({ x: 500, y: 500 }) }) });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ document, issues: [] }) }));
     render(<App />);
     await screen.findByRole('heading', { name: 'Waypoints' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add node' }));
+    expect(within(screen.getByRole('listbox', { name: 'Map nodes' })).getAllByRole('option')).toHaveLength(2);
+    expect(screen.getByText('Click the map to place a node')).toBeInTheDocument();
+    fireEvent.pointerDown(screen.getByRole('img'), { button: 0, clientX: 100, clientY: 100 });
+    const draftDialog = screen.getByRole('dialog');
+    expect(within(screen.getByRole('listbox', { name: 'Map nodes' })).getAllByRole('option')).toHaveLength(2);
+    expect(within(draftDialog).getByRole('button', { name: 'Create node' })).toBeDisabled();
+    fireEvent.change(within(draftDialog).getByLabelText('QR code'), { target: { value: '12345' } });
+    fireEvent.click(within(draftDialog).getByRole('button', { name: 'Create node' }));
     expect(within(screen.getByRole('listbox', { name: 'Map nodes' })).getAllByRole('option')).toHaveLength(3);
     expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled();
 
@@ -88,6 +103,16 @@ describe('App workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
     expect(within(screen.getByRole('listbox', { name: 'Map nodes' })).getAllByRole('option')).toHaveLength(2);
     expect(screen.getByText(/Saved/)).toBeInTheDocument();
+  });
+
+  it('cancels placement without creating a node', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ document, issues: [] }) }));
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Waypoints' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add node' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Add node' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText('● Saved')).toBeInTheDocument();
   });
 
   it('recomputes routes immediately when a node moves', async () => {

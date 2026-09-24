@@ -16,6 +16,18 @@ const document: AgvMap = {
 };
 
 describe('MapCanvas', () => {
+  it('preserves camera framing during edits and refits only on request', () => {
+    const props = { selectedIndex: null, onSelect: () => {} };
+    const { rerender } = render(<MapCanvas {...props} document={document} />);
+    const initialBox = screen.getByRole('img').getAttribute('viewBox');
+    const initialPosition = screen.getByRole('button', { name: /Waypoint QR 1/ }).getAttribute('transform');
+    const expanded = { map: { ...document.map, nodes: [...document.map.nodes, { x: 100000, y: 1000, code: 3 }] } };
+    rerender(<MapCanvas {...props} document={expanded} />);
+    expect(screen.getByRole('img')).toHaveAttribute('viewBox', initialBox);
+    expect(screen.getByRole('button', { name: /Waypoint QR 1/ })).toHaveAttribute('transform', initialPosition);
+    rerender(<MapCanvas {...props} document={expanded} fitToken={1} />);
+    expect(screen.getByRole('img').getAttribute('viewBox')).not.toBe(initialBox);
+  });
   it('exposes the map and its nodes with engineering context', () => {
     render(<MapCanvas document={document} selectedIndex={null} onSelect={() => {}} />);
 

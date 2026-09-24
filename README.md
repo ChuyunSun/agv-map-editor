@@ -56,6 +56,17 @@ pass `--build-arg NODE_ARCH=arm64`.
 4. Resolve blocking errors; warnings remain saveable and document suspicious topology.
 5. Save. The API validates again and atomically replaces the JSON file.
 
+To create a waypoint, click **Add node**, then click its approximate position on the map.
+In the configuration dialog, verify integer millimeter coordinates, enter the actual
+floor QR code (no code is generated), and configure name, outgoing directions, and
+optional station features. Review incoming/outgoing routes, their distances, and any
+existing routes redirected by the insertion. **Create node** adds one undoable local
+change; **Save map** persists it. Missing connections are warnings, so points awaiting
+configuration can be created and saved. Duplicate coordinates block creation.
+**Cancel** or `Escape` discards the draft without changing the map.
+Adding, deleting, and moving nodes preserve your current view;
+use **Fit map** when you want to frame the complete map again.
+
 View controls do not modify map data: use the mouse wheel or **Zoom in**, drag the
 canvas background to pan, use **Rotate**, and use **Fit map** to reset the view. Drag a
 node to commit a new integer millimeter position.
@@ -92,6 +103,12 @@ The PUT endpoint rejects schema errors with `400`, blocking semantic errors with
 accepted. Writes use a same-directory temporary file followed by rename.
 
 ## Verification
+
+The GitHub Actions workflow in `.github/workflows/verify.yml` runs tests, builds the
+application and Debian image, then verifies HTTP save and data persistence across
+container replacement. It does not publish images. A configured workflow is not a
+successful run; see the [delivery checklist](docs/DELIVERY_CHECKLIST.md) for pending
+release verification and publication steps.
 
 ```bash
 npm run typecheck

@@ -34,7 +34,7 @@ Non-blocking warnings:
 
 - duplicate QR code;
 - an outgoing direction with no reachable neighbor;
-- an isolated or unreachable node;
+- a node with no direct incoming or usable outgoing route (not a global reachability test);
 - charger and chute present on the same node;
 - duplicate human-readable name.
 
@@ -45,6 +45,17 @@ Non-blocking warnings:
 The canvas will visually preserve the assessment's industrial coordinate convention: North is positive X and West is positive Y. A visible compass and millimeter units will prevent users from assuming browser-screen coordinates.
 
 ## Editing scope
+
+The assessment explicitly asks for map editing, but does not separately mandate
+Add/Delete controls. These are editor conveniences. Add enters placement mode:
+the user clicks a map position, then confirms measured coordinates, manually enters
+the actual QR code, and configures optional properties in a draft dialog. No QR
+code is generated. A connection preview shows incoming/outgoing routes and warns
+when the insertion changes existing nearest-neighbor routes. Missing incoming or
+outgoing routes remain warnings after creation and do not block saving; they do not
+establish fleet-wide reachability, which requires start locations and mission context.
+Escape or Cancel exits without adding a node. Editing
+preserves the current camera; only initial loading and explicit Fit map reframe it.
 
 Core editing uses precise inspector fields. Dragging nodes is a bonus interaction and must never be the only way to enter exact coordinates.
 

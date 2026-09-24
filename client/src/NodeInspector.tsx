@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useId, useState } from 'react';
+import { FieldValidationContext } from './field-validation';
 import { DIRECTIONS, type Direction, type MapNode } from '../../shared/map-schema';
 
 interface IntegerFieldProps {
@@ -10,11 +11,17 @@ interface IntegerFieldProps {
 
 function IntegerField({ label, value, minimum, onValidChange }: IntegerFieldProps) {
   const [draft, setDraft] = useState(String(value));
+  const fieldId = useId();
+  const reportValidity = useContext(FieldValidationContext);
 
   useEffect(() => setDraft(String(value)), [value]);
 
   const parsed = Number(draft);
   const valid = /^-?\d+$/.test(draft) && Number.isSafeInteger(parsed) && (minimum === undefined || parsed >= minimum);
+  useEffect(() => {
+    reportValidity(fieldId, !valid);
+    return () => reportValidity(fieldId, false);
+  }, [fieldId, valid, reportValidity]);
   const error = draft.length === 0
     ? `${label} is required.`
     : !valid
@@ -30,6 +37,7 @@ function IntegerField({ label, value, minimum, onValidChange }: IntegerFieldProp
         min={minimum}
         value={draft}
         aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${fieldId}-error` : undefined}
         onChange={(event) => {
           const nextDraft = event.target.value;
           setDraft(nextDraft);
@@ -39,7 +47,7 @@ function IntegerField({ label, value, minimum, onValidChange }: IntegerFieldProp
           }
         }}
       />
-      {error && <small className="field-error">{error}</small>}
+      {error && <small id={`${fieldId}-error`} className="field-error">{error}</small>}
     </label>
   );
 }
@@ -47,9 +55,10 @@ function IntegerField({ label, value, minimum, onValidChange }: IntegerFieldProp
 interface NodeInspectorProps {
   node: MapNode;
   onChange: (node: MapNode) => void;
+  hideNumericFields?: boolean;
 }
 
-export function NodeInspector({ node, onChange }: NodeInspectorProps) {
+export function NodeInspector({ node, onChange, hideNumericFields = false }: NodeInspectorProps) {
   const update = (patch: Partial<MapNode>) => onChange({ ...node, ...patch });
 
   const toggleDirection = (direction: Direction, checked: boolean) => {
@@ -77,11 +86,11 @@ export function NodeInspector({ node, onChange }: NodeInspectorProps) {
         />
       </label>
 
-      <div className="form-grid">
+      {!hideNumericFields && <div className="form-grid">
         <IntegerField label="QR code" value={node.code} onValidChange={(code) => update({ code })} />
         <IntegerField label="X (mm)" value={node.x} onValidChange={(x) => update({ x })} />
         <IntegerField label="Y (mm)" value={node.y} onValidChange={(y) => update({ y })} />
-      </div>
+      </div>}
 
       <fieldset>
         <legend>Outgoing directions</legend>
