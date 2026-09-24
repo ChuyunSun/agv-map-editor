@@ -1,0 +1,4 @@
+# Fixed snapshots for the assessment-mandated, now-EOL Bullseye base.
+# Disable only snapshot expiry checks; APT signature verification remains enabled.
+deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260831T235959Z/ bullseye main
+deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260831T235959Z/ bullseye-security main

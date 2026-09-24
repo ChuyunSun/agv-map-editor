@@ -47,6 +47,15 @@ the empty volume.
 The Dockerfile defaults to the Linux x64 Node distribution. For a native ARM64 build,
 pass `--build-arg NODE_ARCH=arm64`.
 
+The assessment requires Bullseye, which is now end-of-life. Its live security
+repository currently references missing packages ([Debian issue #1147093](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1147093)).
+The build therefore uses official Debian snapshots dated 2026-08-31 for both main
+and security packages. Only snapshot expiry checking is disabled, as documented by
+[Debian Snapshot](https://snapshot.debian.org/); package signature verification stays
+enabled. This preserves the required base and historical package availability, but
+does not provide ongoing security updates. This image is for assessment use, not
+an internet-facing production deployment.
+
 ## User workflow
 
 1. Search or select a waypoint in the explorer or on the map.

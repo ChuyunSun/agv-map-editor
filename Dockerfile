@@ -3,8 +3,10 @@ FROM debian:bullseye AS node-base
 ARG NODE_VERSION=22.12.0
 ARG NODE_ARCH=x64
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
+COPY docker/sources.list /etc/apt/sources.list
+RUN rm -f /etc/apt/sources.list.d/debian.sources \
+    && apt-get -o Acquire::Retries=3 update \
+    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends ca-certificates curl xz-utils libstdc++6 \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" \
     && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
