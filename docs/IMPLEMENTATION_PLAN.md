@@ -205,8 +205,8 @@ verified application from Docker Hub.
 - Private repository created: `ChuyunSun/mujin-map-editor` (author's updated preference).
 - Added CI configuration for tests, build, Docker health/static serving, save, and
   persistence across container replacement. Execution remains pending.
-- GitHub browser login is complete. Source upload and Docker-enabled verification
-  remain pending; see `DELIVERY_CHECKLIST.md`. No image has been published yet.
+- Source uploaded and private visibility verified. GitHub-hosted Docker verification
+  has started; see `DELIVERY_CHECKLIST.md`. No image has been published yet.
 
 ### UI refinement after review
 

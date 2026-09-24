@@ -18,7 +18,7 @@
   HTTP save, and persistence across container replacement.
 - [ ] Workflow executed successfully on GitHub (configuration alone is not evidence).
 - [ ] Docker image built and runtime verified on a Docker-enabled host.
-- [ ] Source pushed to GitHub and private visibility verified.
+- [x] Source pushed to GitHub and private visibility verified.
 - [ ] Verified image pushed to Docker Hub with a versioned tag.
 - [ ] README updated with the actual image name and pull/run command.
 - [ ] Final repository and image links checked before submission.
@@ -28,7 +28,7 @@
 At preparation time, neither `docker` nor `gh` was available on PATH or in its
 standard Program Files location. The in-app browser was signed out of GitHub.
 The author subsequently signed in and the private GitHub repository was created.
-Source upload and Docker image delivery are tracked separately above. Passwords and
+Source upload is complete; Docker verification and image delivery are tracked above. Passwords and
 tokens should not be placed in chat or source files.
 
 The verification workflow never publishes an image and needs no Docker Hub secret.
