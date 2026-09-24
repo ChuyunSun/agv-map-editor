@@ -2,6 +2,9 @@
 
 ## Intended delivery
 
+The remaining account setup, image publication and reviewer handoff steps are in
+[the release guide](RELEASE_GUIDE.md). No example image name is a published artifact.
+
 - Repository name: `mujin-map-editor`.
 - Repository visibility: private, as requested by the author before creation.
 - Repository: https://github.com/ChuyunSun/mujin-map-editor
